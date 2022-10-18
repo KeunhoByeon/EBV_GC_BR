@@ -16,7 +16,11 @@ class EBVGCDataset(Dataset):
         self.std = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(1, 1, 3)
 
         # Augmentation setting (Not yet implemented all)
-        self.affine_seq = iaa.Sequential([iaa.Sometimes(0.5, iaa.Fliplr(0.5)), iaa.Sometimes(0.5, iaa.Flipud(0.5)), ], random_order=True)
+        self.affine_seq = iaa.Sequential([
+            iaa.Fliplr(0.5),
+            iaa.Flipud(0.5),
+            iaa.Sometimes(0.5, iaa.Affine(rotate=(-45, 45)))
+        ], random_order=True)
         # self.color_seq = iaa.Sequential([
         #     iaa.Sometimes(0.1, iaa.GaussianBlur(sigma=(0, 0.5))),
         #     iaa.Sometimes(0.1, iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5)),
