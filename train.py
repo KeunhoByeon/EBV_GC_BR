@@ -17,7 +17,7 @@ from utils import accuracy
 def train(epoch, model, criterion, optimizer, train_loader, logger=None):
     model.train()
 
-    total_confusion_mat, confusion_mat = [[0, 0], [0, 0]], [[0, 0], [0, 0]]
+    total_confusion_mat, confusion_mat = [[0 for _ in range(3)] for _ in range(3)], [[0 for _ in range(3)] for _ in range(3)]
     num_progress, next_print = 0, args.print_freq
     for i, (_, inputs, targets) in enumerate(train_loader):
         if torch.cuda.is_available():
@@ -26,7 +26,7 @@ def train(epoch, model, criterion, optimizer, train_loader, logger=None):
 
         output = model(inputs)
         loss = criterion(output, targets)
-        acc = accuracy(output, targets)[0]
+        acc = float(accuracy(output, targets)[0])
 
         optimizer.zero_grad()
         loss.backward()
@@ -38,14 +38,14 @@ def train(epoch, model, criterion, optimizer, train_loader, logger=None):
         # Confusion Matrix
         _, preds = output.topk(1, 1, True, True)
         for t, p in zip(targets, preds):
-            confusion_mat[int(t)][p[0]] += 1
-            total_confusion_mat[int(t)][p[0]] += 1
+            confusion_mat[int(t.item())][p[0].item()] += 1
+            total_confusion_mat[int(t.item())][p[0].item()] += 1
 
         num_progress += len(inputs)
         if num_progress >= next_print:
             if logger is not None:
                 logger(history_key='batch', epoch=epoch, batch=num_progress, confusion_mat=confusion_mat, time=time.strftime('%Y%m%d%H%M%S'))
-            confusion_mat = [[0, 0], [0, 0]]
+            confusion_mat = [[0 for _ in range(3)] for _ in range(3)]
             next_print += args.print_freq
 
         del output, loss, acc
@@ -58,7 +58,7 @@ def val(epoch, model, criterion, val_loader, logger=None):
     model.eval()
 
     with torch.no_grad():
-        confusion_mat = [[0, 0], [0, 0]]
+        confusion_mat = [[0 for _ in range(3)] for _ in range(3)]
         for i, (_, inputs, targets) in tqdm(enumerate(val_loader), leave=False, desc='Validation {}'.format(epoch), total=len(val_loader)):
             if torch.cuda.is_available():
                 inputs = inputs.cuda()
@@ -66,19 +66,19 @@ def val(epoch, model, criterion, val_loader, logger=None):
 
             output = model(inputs)
             loss = criterion(output, targets)
-            acc = accuracy(output, targets)[0]
+            acc = float(accuracy(output, targets)[0])
 
             logger.add_history('total', {'loss': loss.item(), 'accuracy': acc})
 
             # Confusion Matrix
             _, preds = output.topk(1, 1, True, True)
             for t, p in zip(targets, preds):
-                confusion_mat[int(t)][p[0]] += 1
+                confusion_mat[int(t.item())][p[0].item()] += 1
 
             del output, loss, acc
 
         if logger is not None:
-            logger('*Validation', history_key='total', confusion_mat=confusion_mat, time=time.strftime('%Y%m%d%H%M%S'))
+            logger('*Validation {}'.format(epoch), history_key='total', confusion_mat=confusion_mat, time=time.strftime('%Y%m%d%H%M%S'))
 
 
 def run(args):
@@ -105,7 +105,7 @@ def run(args):
         criterion = criterion.cuda()
 
     # Dataset
-    train_set, val_set, test_set = prepare_gastric_EBV_data_json()
+    train_set, val_set, _ = prepare_gastric_EBV_data_json()
     train_dataset = EBVGCDataset(train_set, input_size=args.input_size, do_aug=True)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, shuffle=True)
     val_dataset = EBVGCDataset(val_set, input_size=args.input_size, do_aug=False)
@@ -136,17 +136,17 @@ if __name__ == '__main__':
     parser.add_argument('--pretrained', default=True, action='store_true', help='Load pretrained model.')
     # Data Arguments
     parser.add_argument('--data', default='~/data', help='path to dataset')
-    parser.add_argument('--workers', default=4, type=int, help='number of data loading workers')
+    parser.add_argument('--workers', default=8, type=int, help='number of data loading workers')
     parser.add_argument('--input_size', default=512, type=int, help='image input size')
     # Training Arguments
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number')
     parser.add_argument('--epochs', default=100, type=int, help='number of total epochs to run')
-    parser.add_argument('--batch_size', default=16, type=int, help='mini-batch size')
-    parser.add_argument('--lr', default=0.0002, type=float, help='initial learning rate', dest='lr')
+    parser.add_argument('--batch_size', default=21, type=int, help='mini-batch size')
+    parser.add_argument('--lr', default=0.000008, type=float, help='initial learning rate', dest='lr')
     parser.add_argument('--seed', default=103, type=int, help='seed for initializing training.')
     # Validation and Debugging Arguments
     parser.add_argument('--val_freq', default=1, type=int, help='validation freq')
-    parser.add_argument('--print_freq', default=100, type=int, help='print and save frequency')
+    parser.add_argument('--print_freq', default=1000, type=int, help='print and save frequency')
     parser.add_argument('--result', default='results', help='path to results')
     parser.add_argument('--resume', default=None, type=str, help='path to latest checkpoint')
     parser.add_argument('--debug', default=False, action='store_true', help='debug validation')

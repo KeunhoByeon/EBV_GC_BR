@@ -35,8 +35,10 @@ class EBVGCDataset(Dataset):
         if self.input_size is not None:
             img = resize_and_pad_image(img, target_size=(self.input_size, self.input_size), keep_ratio=True, padding=True)
 
-        if self.split == 'train' and self.do_aug:
+        if self.do_aug:
             img = self.affine_seq.augment_image(img)
+            # Not yet implemented
+            # img = self.color_seq.augment_image(img)
 
         img = img.astype(np.float32) / 255.
         img = (img - self.mean) / self.std
