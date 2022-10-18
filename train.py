@@ -89,7 +89,7 @@ def run(args):
         torch.backends.cudnn.deterministic = True
 
     # Model
-    model = Classifier(args.model, num_classes=args.num_classes, pretrained=True)
+    model = Classifier(args.model, num_classes=args.num_classes, pretrained=args.pretrained)
     if args.resume is not None:
         model.load_state_dict(torch.load(args.resume))
 
@@ -105,7 +105,7 @@ def run(args):
         criterion = criterion.cuda()
 
     # Dataset
-    train_set, val_set, _ = prepare_gastric_EBV_data_json()
+    train_set, val_set, _ = prepare_gastric_EBV_data_json(args.data)
     train_dataset = EBVGCDataset(train_set, input_size=args.input_size, do_aug=True)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, shuffle=True)
     val_dataset = EBVGCDataset(val_set, input_size=args.input_size, do_aug=False)
@@ -116,7 +116,7 @@ def run(args):
     logger.set_sort(['loss', 'accuracy', 'confusion_mat', 'time'])
     logger(str(args))
 
-    save_dir = os.path.join(args.result, 'models')
+    save_dir = os.path.join(args.result, 'checkpoints')
     os.makedirs(save_dir, exist_ok=True)
 
     # Run training
@@ -133,15 +133,15 @@ if __name__ == '__main__':
     # Model Arguments
     parser.add_argument('--model', default='efficientnet_b0')
     parser.add_argument('--num_classes', default=3, type=int, help='number of classes')
-    parser.add_argument('--pretrained', default=True, action='store_true', help='Load pretrained model.')
+    parser.add_argument('--pretrained', default=False, action='store_true', help='Load pretrained model.')
     # Data Arguments
-    parser.add_argument('--data', default='~/data', help='path to dataset')
+    parser.add_argument('--data', default='/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024', help='path to dataset')
     parser.add_argument('--workers', default=8, type=int, help='number of data loading workers')
     parser.add_argument('--input_size', default=512, type=int, help='image input size')
     # Training Arguments
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number')
     parser.add_argument('--epochs', default=100, type=int, help='number of total epochs to run')
-    parser.add_argument('--batch_size', default=21, type=int, help='mini-batch size')
+    parser.add_argument('--batch_size', default=20, type=int, help='mini-batch size')
     parser.add_argument('--lr', default=0.000008, type=float, help='initial learning rate', dest='lr')
     parser.add_argument('--seed', default=103, type=int, help='seed for initializing training.')
     # Validation and Debugging Arguments

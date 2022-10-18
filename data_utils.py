@@ -1,5 +1,6 @@
 import glob
 import json
+import os.path
 from collections import Counter
 
 import torch
@@ -82,7 +83,7 @@ def prepare_gastric_cancer_data_wsi(data, type, fold_list, data_root):
     return list_out
 
 
-def prepare_gastric_EBV_data_json(fold=0, split_type='V0', colornorm=False):
+def prepare_gastric_EBV_data_json(img_dir, fold=0, split_type='V0', colornorm=False):
     if split_type == 'wsi':
         json_dir = './data/EBV_split_wsi.json'
     elif split_type == 'patient':
@@ -121,8 +122,8 @@ def prepare_gastric_EBV_data_json(fold=0, split_type='V0', colornorm=False):
     #     data_root_dir_wsi = '/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024/Gastric_WSI/gastric_wsi_1024_08_resize05/'
     #     data_root_dir = '/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024/Gastric_TMAs/Gastric_EBV_V2_1024/core_image_resize05/'
 
-    data_root_dir_wsi = '/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024/Gastric_WSI/gastric_wsi_1024_08'
-    data_root_dir = '/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024/Gastric_TMAs/Gastric_EBV_V2_1024/core_image/'
+    data_root_dir_wsi = os.path.join(img_dir, 'Gastric_WSI/gastric_wsi_1024_08')
+    data_root_dir = os.path.join(img_dir, 'Gastric_TMAs/Gastric_EBV_V2_1024/core_image/')
 
     if split_type == 'wsi':
         train_set = prepare_gastric_cancer_data_wsi(data, 'tma', train_list, data_root_dir) + prepare_gastric_cancer_data(data, 'wsi', train_list, data_root_dir_wsi)
