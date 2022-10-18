@@ -38,8 +38,6 @@ class EBVGCDataset(Dataset):
         img = cv2.imread(img_path)
         if self.input_size is not None:
             img = resize_and_pad_image(img, target_size=(self.input_size, self.input_size), keep_ratio=True, padding=True)
-            cv2.imshow('T', img)
-            cv2.waitKey(0)
 
         if self.do_aug:
             img = self.affine_seq.augment_image(img)
