@@ -142,13 +142,14 @@ if __name__ == '__main__':
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number')
     parser.add_argument('--epochs', default=100, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=20, type=int, help='mini-batch size')
-    parser.add_argument('--lr', default=0.000008, type=float, help='initial learning rate', dest='lr')
+    parser.add_argument('--lr', default=0.00001, type=float, help='initial learning rate', dest='lr')
     parser.add_argument('--seed', default=103, type=int, help='seed for initializing training.')
     # Validation and Debugging Arguments
     parser.add_argument('--val_freq', default=1, type=int, help='validation freq')
     parser.add_argument('--print_freq', default=1000, type=int, help='print and save frequency')
     parser.add_argument('--result', default='results', help='path to results')
     parser.add_argument('--resume', default=None, type=str, help='path to latest checkpoint')
+    parser.add_argument('--tag', default=None, type=str)
     parser.add_argument('--debug', default=False, action='store_true', help='debug validation')
     args = parser.parse_args()
 
@@ -156,6 +157,8 @@ if __name__ == '__main__':
     args.data = os.path.expanduser(args.data)
     args.result = os.path.expanduser(args.result)
     args.result = os.path.join(args.result, time.strftime('%Y%m%d%H%M%S', time.localtime(time.time())))
+    if args.tag is not None:
+        args.result = '{}_{}'.format(args.result, args.tag)
     os.makedirs(args.result, exist_ok=True)
 
     run(args)

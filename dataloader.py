@@ -21,14 +21,16 @@ class EBVGCDataset(Dataset):
             iaa.Flipud(0.5),
             iaa.Sometimes(0.5, iaa.Affine(rotate=(-45, 45)))
         ], random_order=True)
-        # self.color_seq = iaa.Sequential([
-        #     iaa.Sometimes(0.1, iaa.GaussianBlur(sigma=(0, 0.5))),
-        #     iaa.Sometimes(0.1, iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5)),
-        #     iaa.Sometimes(0.2, iaa.Multiply((0.8, 1.2), per_channel=0.2)),
-        #     iaa.Sometimes(0.2, iaa.MultiplyHue((0.8, 1.2))),
-        #     iaa.Sometimes(0.2, iaa.MultiplySaturation((0.8, 1.2))),
-        #     iaa.Sometimes(0.2, iaa.LogContrast((0.8, 1.2))),
-        # ], random_order=True)
+        self.color_seq = iaa.Sequential([
+            iaa.Sometimes(0.2, iaa.GaussianBlur(sigma=(0, 0.5))),
+            iaa.Sometimes(0.2, iaa.AdditiveGaussianNoise(loc=0, scale=(0.0, 0.05 * 255), per_channel=0.5)),
+            iaa.Sometimes(0.2, iaa.Cutout(nb_iterations=(1, 5), size=0.2, squared=False)),
+            iaa.Sometimes(0.2, iaa.Grayscale(alpha=(0.0, 1.0))),
+            iaa.Sometimes(0.5, iaa.MultiplyHue((0.6, 1.4))),
+            iaa.Sometimes(0.5, iaa.MultiplySaturation((0.6, 1.4))),
+            iaa.Sometimes(0.5, iaa.Multiply((0.6, 1.4), per_channel=0.2)),
+            iaa.Sometimes(0.5, iaa.LogContrast((0.6, 1.4))),
+        ], random_order=True)
 
         self.samples = samples
 
@@ -41,8 +43,7 @@ class EBVGCDataset(Dataset):
 
         if self.do_aug:
             img = self.affine_seq.augment_image(img)
-            # Not yet implemented
-            # img = self.color_seq.augment_image(img)
+            img = self.color_seq.augment_image(img)
 
         img = img.astype(np.float32) / 255.
         img = (img - self.mean) / self.std
