@@ -8,6 +8,7 @@ def read_log(txt_path):
         for line in rf.readlines():
             if '*Validation' in line:
                 line_split = line.split('  ')
+                now_epoch = int(line_split[0].split(' ')[1])
                 loss = float(line_split[1].split(': ')[1])
                 acc = float(line_split[2].split(': ')[1])
                 confusion_mat = line_split[3].split(': ')[1]
@@ -16,8 +17,6 @@ def read_log(txt_path):
                     best_epoch = now_epoch
                     best_acc = acc
                     best_confusion_mat = confusion_mat
-            elif line[0] == '[':
-                now_epoch = int(line[1:].split('/')[0])
 
         print('[{}] best epoch: {}/{}  best acc: {}  best confusion mat: {}'.format(txt_path, best_epoch, now_epoch, best_acc, best_confusion_mat))
         print('Arguments: {}'.format(args.replace('Namespace(', '')[:-2]))

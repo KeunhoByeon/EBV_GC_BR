@@ -10,7 +10,7 @@ from data_utils import prepare_gastric_EBV_data_json
 from dataloader import EBVGCDataset
 from logger import Logger
 from model import Classifier
-from utils import accuracy
+from tools.utils import accuracy
 
 
 def eval(model, criterion, eval_loader, logger=None):
@@ -62,7 +62,7 @@ def run(args):
     else:
         print('Dataset type {} is not valid'.format(args.dataset_type))
         raise AssertionError
-    eval_dataset = EBVGCDataset(eval_set, input_size=args.input_size, do_aug=False)
+    eval_dataset = EBVGCDataset(eval_set, input_size=args.input_size, is_train=False)
     eval_loader = torch.utils.data.DataLoader(eval_dataset, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, shuffle=False)
 
     # Logger
@@ -80,14 +80,14 @@ if __name__ == '__main__':
     parser.add_argument('--model', default='efficientnet_b0')
     parser.add_argument('--num_classes', default=3, type=int, help='number of classes')
     parser.add_argument('--checkpoint', default=None, type=str, help='path to checkpoint')
-    parser.add_argument('--checkpoint_name', default='20221016021717_b0', type=str)
-    parser.add_argument('--checkpoint_epoch', default=58, type=int)
+    parser.add_argument('--checkpoint_name', default='20221114193233_lr1e_06_add_mark', type=str)
+    parser.add_argument('--checkpoint_epoch', default=70, type=int)
     # Data Arguments
     parser.add_argument('--data', default='/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024', help='path to dataset')
     parser.add_argument('--input_size', default=512, type=int, help='image input size')
     parser.add_argument('--workers', default=8, type=int, help='number of data loading workers')
-    parser.add_argument('--batch_size', default=64, type=int, help='mini-batch size')
-    parser.add_argument('--dataset_type', default='val', type=str, choices=['val', 'test'], help='val or test')
+    parser.add_argument('--batch_size', default=128, type=int, help='mini-batch size')
+    parser.add_argument('--dataset_type', default='test', type=str, choices=['val', 'test'], help='val or test')
     # Debugging Arguments
     parser.add_argument('--result', default=None, help='path to results')
     args = parser.parse_args()
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     # Paths setting
     if args.checkpoint is None:
         if args.checkpoint_name is not None and args.checkpoint_epoch is not None:
-            args.checkpoint = './results/{}/models/{}.pth'.format(args.checkpoint_name, args.checkpoint_epoch)
+            args.checkpoint = './results/{}/checkpoints/{}.pth'.format(args.checkpoint_name, args.checkpoint_epoch)
         if args.checkpoint is None or not os.path.isfile(args.checkpoint):
             print('Cannot find checkpoint file!: {} {} {}'.format(args.checkpoint, args.checkpoint_name, args.checkpoint_epoch))
             raise AssertionError

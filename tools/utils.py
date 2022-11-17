@@ -1,6 +1,32 @@
-import cv2
+import os
 
+import cv2
+import pandas as pd
 import torch
+
+
+def os_walk(walk_dir, ext=None):
+    if ext is None:
+        ext_list = None
+    elif isinstance(ext, list) or isinstance(ext, tuple):
+        ext_list = ext
+    elif isinstance(ext, str):
+        ext_list = [ext]
+    else:
+        print("Invalid ext type: {}".format(ext))
+        raise AssertionError
+
+    for path, dir, files in os.walk(walk_dir):
+        for filename in files:
+            ext = os.path.splitext(filename)[-1]
+            if ext_list is not None and ext not in ext_list:
+                continue
+            yield os.path.join(path, filename)
+
+
+def load_annotation(xlsx_path):
+    pd_exel = pd.read_excel(xlsx_path)
+    return dict(zip(pd_exel['patient'], pd_exel['EBV.positive']))
 
 
 def accuracy(output, target, topk=(1,)):

@@ -11,7 +11,7 @@ from data_utils import prepare_gastric_EBV_data_json
 from dataloader import EBVGCDataset
 from logger import Logger
 from model import Classifier
-from utils import accuracy
+from tools.utils import accuracy
 
 
 def train(epoch, model, criterion, optimizer, train_loader, logger=None):
@@ -106,9 +106,9 @@ def run(args):
 
     # Dataset
     train_set, val_set, _ = prepare_gastric_EBV_data_json(args.data)
-    train_dataset = EBVGCDataset(train_set, input_size=args.input_size, do_aug=True)
+    train_dataset = EBVGCDataset(train_set, input_size=args.input_size, is_train=True)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, shuffle=True)
-    val_dataset = EBVGCDataset(val_set, input_size=args.input_size, do_aug=False)
+    val_dataset = EBVGCDataset(val_set, input_size=args.input_size, is_train=False)
     val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=args.batch_size, num_workers=args.workers, pin_memory=True, shuffle=False)
 
     # Logger
