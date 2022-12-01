@@ -1,6 +1,8 @@
 import os
 
 import cv2
+import numpy as np
+import openslide
 import pandas as pd
 import torch
 
@@ -19,7 +21,7 @@ def os_walk(walk_dir, ext=None):
     for path, dir, files in os.walk(walk_dir):
         for filename in files:
             ext = os.path.splitext(filename)[-1]
-            if ext_list is not None and ext not in ext_list:
+            if ext_list is not None and ext not in ext_list and ext[1:] not in ext_list:
                 continue
             yield os.path.join(path, filename)
 
@@ -68,3 +70,20 @@ def resize_and_pad_image(img, target_size=(640, 640), keep_ratio=False, padding=
         img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0])
 
     return img
+
+
+def get_thumbnail(svs_path, return_info=False, thumbnail_size=1024):
+    slide = openslide.OpenSlide(svs_path)
+    w_pixels, h_pixels = slide.level_dimensions[0]
+
+    ratio = min(thumbnail_size / w_pixels, thumbnail_size / h_pixels)
+    thumbnail_shape = (int(w_pixels * ratio), int(h_pixels * ratio))
+
+    thumbnail = slide.get_thumbnail(thumbnail_shape)
+    thumbnail = np.array(thumbnail)
+    thumbnail = cv2.cvtColor(thumbnail, cv2.COLOR_RGB2BGR)
+
+    if return_info:
+        return thumbnail, (w_pixels, h_pixels), ratio
+    else:
+        return thumbnail

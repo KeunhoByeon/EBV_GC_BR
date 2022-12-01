@@ -39,7 +39,7 @@ def read_log(txt_path):
 
 if __name__ == '__main__':
     base_dir = '../results/'
-    checkpoint_name = '20221110200838_lr6e_06_add_mark'
+    checkpoint_name = ''
     txt_path = os.path.join(base_dir, checkpoint_name, 'log.txt')
 
     if not os.path.isfile(txt_path):

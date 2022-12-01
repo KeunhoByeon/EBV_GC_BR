@@ -1,20 +1,18 @@
-import cv2
-import numpy as np
-import openslide
-
 import argparse
 import os
 
+import cv2
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from dataloader import EBVGCDataset
 from model import Classifier
-from tools.utils import os_walk, load_annotation, resize_and_pad_image
+from tools.utils import os_walk, load_annotation, resize_and_pad_image, get_thumbnail
 
 
-def prepare_eval_dataset(patch_dir, svs_dir, mask_dir, anno_path):
+def prepare_eval_dataset(patch_dir, svs_dir, mask_dir, anno_path, label_if_not_exist=None):
     data = {}
 
     anno_data = load_annotation(anno_path)
@@ -28,14 +26,16 @@ def prepare_eval_dataset(patch_dir, svs_dir, mask_dir, anno_path):
         file_full_index = filename.replace(os.path.splitext(filename)[-1], '').lower()
         file_index = '-'.join(file_full_index.split('-')[:3])
         if file_full_index not in data.keys():
-            data[file_full_index] = {'patches': [], 'svs_path': None, 'mask_path': None, 'label': anno_data[file_index.upper()] if file_index.upper() in anno_data.keys() else None}
+            label = anno_data[file_index.upper()] if file_index.upper() in anno_data.keys() else label_if_not_exist
+            data[file_full_index] = {'patches': [], 'svs_path': None, 'mask_path': None, 'label': label}
         data[file_full_index]['svs_path'] = svs_path
 
     for patch_path in os_walk(patch_dir, ('.png', '.jpg', '.jpeg')):
         file_full_index = os.path.basename(patch_path).split('_patch')[0].lower()
         file_index = '-'.join(file_full_index.split('-')[:3])
         if file_full_index not in data.keys():
-            data[file_full_index] = {'patches': [], 'svs_path': None, 'mask_path': None, 'label': anno_data[file_index.upper()] if file_index.upper() in anno_data.keys() else None}
+            label = anno_data[file_index.upper()] if file_index.upper() in anno_data.keys() else label_if_not_exist
+            data[file_full_index] = {'patches': [], 'svs_path': None, 'mask_path': None, 'label': label}
         data[file_full_index]['patches'].append(patch_path)
 
     for mask_path in os_walk(mask_dir, ('.png', '.jpg', '.jpeg')):
@@ -43,41 +43,50 @@ def prepare_eval_dataset(patch_dir, svs_dir, mask_dir, anno_path):
         file_full_index = filename.replace(os.path.splitext(filename)[-1], '').lower()
         file_index = '-'.join(file_full_index.split('-')[:3])
         if file_full_index not in data.keys():
-            data[file_full_index] = {'patches': [], 'svs_path': None, 'mask_path': None, 'label': anno_data[file_index.upper()] if file_index.upper() in anno_data.keys() else None}
+            label = anno_data[file_index.upper()] if file_index.upper() in anno_data.keys() else label_if_not_exist
+            data[file_full_index] = {'patches': [], 'svs_path': None, 'mask_path': None, 'label': label}
         data[file_full_index]['mask_path'] = mask_path
 
     return data
 
 
-def get_thumbnail(svs_path, return_info=False, thumbnail_size=1024):
-    slide = openslide.OpenSlide(svs_path)
-    w_pixels, h_pixels = slide.level_dimensions[0]
+def count_data(data):
+    cnt, failed, cnt_dict = 0, [0, 0, 0, 0], {}
+    for i, (file_index, data_dict) in enumerate(data.items()):
+        patches = data_dict['patches']
+        svs_path = data_dict['svs_path']
+        mask_path = data_dict['mask_path']
+        label = data_dict['label']
+        if len(patches) == 0:
+            failed[0] += 1
+            continue
+        elif svs_path is None:
+            failed[1] += 1
+            continue
+        elif mask_path is None:
+            failed[2] += 1
+            continue
+        elif label is None:
+            failed[3] += 1
+            continue
+        if label not in cnt_dict.keys():
+            cnt_dict[label] = 0
+        cnt_dict[label] += 1
+        cnt += 1
+    print("Total Cases: {} ({}), Failed: {}".format(np.sum(list(cnt_dict.values())), cnt_dict, failed))
 
-    ratio = min(thumbnail_size / w_pixels, thumbnail_size / h_pixels)
-    thumbnail_shape = (int(w_pixels * ratio), int(h_pixels * ratio))
 
-    thumbnail = slide.get_thumbnail(thumbnail_shape)
-    thumbnail = np.array(thumbnail)
-    thumbnail = cv2.cvtColor(thumbnail, cv2.COLOR_RGB2BGR)
-
-    if return_info:
-        return thumbnail, (w_pixels, h_pixels), ratio
-    else:
-        return thumbnail
-
-
-def evaluate(model, eval_loader):
+def evaluate(model, eval_loader, desc=''):
     model.eval()
 
     outputs = {}
     with torch.no_grad():
-        for i, (img_paths, inputs, _) in tqdm(enumerate(eval_loader), leave=False, desc='Evaluating', total=len(eval_loader)):
+        for i, (img_paths, inputs, _) in tqdm(enumerate(eval_loader), leave=False, desc='Evaluating {}'.format(desc), total=len(eval_loader)):
             if torch.cuda.is_available():
                 inputs = inputs.cuda()
 
             output = model(inputs)
-
-            _, preds = output.topk(1, 1, True, True)
+            preds = torch.argmax(output, dim=1)
             for img_path, pred in zip(img_paths, preds):
                 # pred = 'Benign' if pred == 0 else pred
                 # pred = 'Positive' if pred == 1 else pred
@@ -96,27 +105,30 @@ def run(args):
     if torch.cuda.is_available():
         model = model.cuda()
 
-    data = prepare_eval_dataset(args.patch_dir, args.svs_dir, args.mask_dir, args.anno_path)
+    data = prepare_eval_dataset(args.patch_dir, args.svs_dir, args.mask_dir, args.anno_path, label_if_not_exist=args.label_if_not_exist)
+    count_data(data)
 
     with open(os.path.join(args.result, 'results.csv'), 'w') as wf:
         wf.write('file,x,y,pred,target\n')
 
-    for file_index, data_dict in data.items():
+    for i, (file_index, data_dict) in enumerate(data.items()):
         patches = data_dict['patches']
         svs_path = data_dict['svs_path']
         mask_path = data_dict['mask_path']
         label = data_dict['label']
-        print(file_index, len(patches), svs_path, mask_path, label)
 
-        if len(patches) == 0 or svs_path is None:
+        if len(patches) == 0:
+            continue
+        elif svs_path is None:
             continue
 
         # Dataset
-        eval_dataset = EBVGCDataset(list(zip(patches, range(len(patches)))), input_size=args.input_size, is_train=False)
+        samples = list(zip(patches, np.zeros(len(patches))))
+        eval_dataset = EBVGCDataset(samples, input_size=args.input_size, is_train=False, stain_norm_path=args.stain_target)
         eval_loader = torch.utils.data.DataLoader(eval_dataset, batch_size=args.batch_size, num_workers=args.workers, shuffle=False)
 
         # Run Evaluating
-        outputs = evaluate(model, eval_loader)
+        outputs = evaluate(model, eval_loader, desc='{}/{}'.format(i, len(data)))
 
         # Load Thumbnail
         thumbnail, num_pixels, thumbnail_ratio = get_thumbnail(svs_path, return_info=True)
@@ -168,12 +180,12 @@ def run(args):
         with open(os.path.join(args.result, 'results.csv'), 'a') as wf:
             wf.writelines(results_data)
 
-        output_mask *= 100
         result_mask = (output_mask + 1) * tissue_mask
         output = (result_mask + 1) / 3 * thumbnail
         output = np.clip(output, 0, 255).astype(np.uint8)
 
-        cv2.imwrite(os.path.join(args.result, os.path.basename(svs_path).replace('.svs', '_class_{}.png'.format(label))), output)
+        save_path = os.path.join(args.result, os.path.basename(svs_path).replace('.svs', '_class_{}.png'.format(label)))
+        cv2.imwrite(save_path, output)
 
 
 if __name__ == '__main__':
@@ -182,12 +194,14 @@ if __name__ == '__main__':
     parser.add_argument('--model', default='efficientnet_b0')
     parser.add_argument('--num_classes', default=3, type=int, help='number of classes')
     parser.add_argument('--checkpoint', default=None, type=str, help='path to checkpoint')
-    parser.add_argument('--checkpoint_name', default='20221114193233_lr1e_06_add_mark', type=str)
-    parser.add_argument('--checkpoint_epoch', default=70, type=int)
+    parser.add_argument('--checkpoint_name', default='', type=str)
+    parser.add_argument('--checkpoint_epoch', default=0, type=int)
     # Data Paths
     parser.add_argument('--patch_dir', default='/media/kwaklab_103/sdb/data/patch_data/TCGA_Stomach_452', help='path to dataset')
     parser.add_argument('--svs_dir', default='/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452', help='path to svs dataset')
     parser.add_argument('--mask_dir', default='/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452_tissue_mask', help='path to mask dataset')
+    # parser.add_argument('--stain_target', default='/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024/Gastric_WSI/gastric_wsi_1024_08/S 2012017007/patch_1343_class_2.jpg')
+    parser.add_argument('--stain_target', default=None)
     # Data Arguments
     parser.add_argument('--anno_path', default='/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452/STAD_molecular_subtype TCGA data.xlsx', help='path to svs dataset')
     parser.add_argument('--input_size', default=512, type=int, help='image input size')
@@ -195,11 +209,13 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', default=128, type=int, help='mini-batch size')
     # Debugging Arguments
     parser.add_argument('--patch_size', default=1024, type=int, help='num pixels of patch')
+    parser.add_argument('--label_if_not_exist', default=None)
     parser.add_argument('--result', default=None, help='path to results')
+    parser.add_argument('--result_tag', default='eval_TCGA')
     args = parser.parse_args()
 
     # Paths setting
-    if args.checkpoint is None:
+    if args.checkpoint is None or len(args.checkpoint) == 0:
         if args.checkpoint_name is not None and args.checkpoint_epoch is not None:
             args.checkpoint = './results/{}/checkpoints/{}.pth'.format(args.checkpoint_name, args.checkpoint_epoch)
         if args.checkpoint is None or not os.path.isfile(args.checkpoint):
@@ -208,9 +224,9 @@ if __name__ == '__main__':
 
     if args.result is None:
         if args.checkpoint_name is not None and args.checkpoint_epoch is not None:
-            args.result = './results/{}/eval_TCGA/{}'.format(args.checkpoint_name, args.checkpoint_epoch)
+            args.result = './results/{}/{}/{}'.format(args.checkpoint_name, args.result_tag, args.checkpoint_epoch)
         else:
-            print('Please specify result dir: {} {} {}'.format(args.result, args.checkpoint_name, args.checkpoint_epoch))
+            print('Please specify result dir: {} {} {} {}'.format(args.result, args.checkpoint_name, args.result_tag, args.checkpoint_epoch))
             raise AssertionError
 
     args.result = os.path.expanduser(args.result)

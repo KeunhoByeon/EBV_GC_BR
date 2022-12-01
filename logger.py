@@ -39,7 +39,8 @@ class Logger:
 
     def _add_component(self, key, data):
         if isinstance(data, float) and self.float_round > 0:
-            data = str(round(data, self.float_round))
+            data = round(data, self.float_round) if round(data, self.float_round) != 0. else data
+            data = str(data)
             if len(data.split('.')) > 1 and len(data.split('.')[1]) < self.float_round:
                 for _ in range(self.float_round - len(data.split('.')[1])):
                     data += '0'

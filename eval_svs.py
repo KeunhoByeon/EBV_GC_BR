@@ -66,7 +66,7 @@ def eval_svs(model, svs_path, anno_data, save_dir, read_size=1024, thumbnail_siz
                         input_img = input_img.cuda()  # CUDA
 
                     output = model(input_img)
-                    _, preds = output.topk(1, 1, True, True)
+                    preds = torch.argmax(output, dim=1)
                     pred = preds[0].item()
 
                 if pred == -1:
@@ -105,8 +105,8 @@ def eval_svs(model, svs_path, anno_data, save_dir, read_size=1024, thumbnail_siz
 if __name__ == '__main__':
     svs_dir = '/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452/'
     xlsx_path = '/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452/STAD_molecular_subtype TCGA data.xlsx'
-    model_path = './results/20221104062515_lr4e_06/checkpoints/93.pth'
-    save_dir = './debug/20221104062515_lr4e_06_epoch93_new_20221108'
+    model_path = None
+    save_dir = None
 
     anno_data = load_annotation(xlsx_path)
 

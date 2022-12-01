@@ -2,6 +2,7 @@ import cv2
 import imgaug.augmenters as iaa
 import numpy as np
 import torch
+from tiatoolbox.tools.stainnorm import VahadaneNormalizer
 from torch.utils.data import Dataset
 
 from data_utils import prepare_gastric_EBV_data_json
@@ -9,7 +10,7 @@ from tools.utils import resize_and_pad_image
 
 
 class EBVGCDataset(Dataset):
-    def __init__(self, samples, input_size: int = None, is_train=False):
+    def __init__(self, samples, input_size: int = None, is_train=False, stain_norm_path=None):
         self.input_size = input_size
         self.is_train = is_train
 
@@ -35,24 +36,35 @@ class EBVGCDataset(Dataset):
 
         self.samples = samples
 
+        if stain_norm_path is not None:
+            target = cv2.imread(stain_norm_path)
+            target = cv2.cvtColor(target, cv2.COLOR_BGR2RGB)
+            self.normalizer = VahadaneNormalizer()
+            self.normalizer.fit(target)
+
     def __getitem__(self, index):
         img_path, gt = self.samples[index]
-        if self.is_train and gt == 0 and np.random.random() < 0.001:
-            img_path = './data/empty.png'
-            img = np.random.normal(255, np.random.randint(0, 127), (self.input_size, self.input_size, 3)) / 2
-            img = img.astype(float)
-            img[:, :, 0] *= np.random.random()
-            img[:, :, 1] *= np.random.random()
-            img[:, :, 2] *= np.random.random()
-            img = img.astype(np.uint8)
-        else:
-            img = cv2.imread(img_path)
-            if self.input_size is not None:
-                img = resize_and_pad_image(img, target_size=(self.input_size, self.input_size), keep_ratio=True, padding=True)
+
+        # if self.is_train and gt == 0 and np.random.random() < 0.001:
+        #     img_path = './data/empty.png'
+        #     img = np.random.normal(255, np.random.randint(0, 127), (self.input_size, self.input_size, 3)) / 2
+        #     img = img.astype(float)
+        #     img[:, :, 0] *= np.random.random()
+        #     img[:, :, 1] *= np.random.random()
+        #     img[:, :, 2] *= np.random.random()
+        #     img = img.astype(np.uint8)
+        # else:
+
+        img = cv2.imread(img_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        if self.input_size is not None:
+            img = resize_and_pad_image(img, target_size=(self.input_size, self.input_size), keep_ratio=True, padding=True)
 
         if self.is_train:
             img = self.affine_seq.augment_image(img)
             img = self.color_seq.augment_image(img)
+        elif hasattr(self, "normalizer"):
+            img = self.normalizer.transform(img)
 
         img = img.astype(np.float32) / 255.
         img = (img - self.mean) / self.std
@@ -93,5 +105,6 @@ if __name__ == '__main__':
             input = input * std + mean
             input = input * 255.
             input = input.astype(np.uint8)
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             cv2.imshow('T', np.hstack([original_img, input]))
             cv2.waitKey(0)

@@ -11,47 +11,6 @@ from data_utils import prepare_gastric_EBV_data_json
 from dataloader import EBVGCDataset
 from logger import Logger
 from model import Classifier
-from tools.utils import accuracy
-
-
-def train(epoch, model, criterion, optimizer, train_loader, logger=None):
-    model.train()
-
-    total_confusion_mat, confusion_mat = [[0 for _ in range(3)] for _ in range(3)], [[0 for _ in range(3)] for _ in range(3)]
-    num_progress, next_print = 0, args.print_freq
-    for i, (_, inputs, targets) in enumerate(train_loader):
-        if torch.cuda.is_available():
-            inputs = inputs.cuda()
-            targets = targets.cuda()
-
-        output = model(inputs)
-        loss = criterion(output, targets)
-        acc = float(accuracy(output, targets)[0])
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        logger.add_history('total', {'loss': loss.item(), 'accuracy': acc})
-        logger.add_history('batch', {'loss': loss.item(), 'accuracy': acc})
-
-        # Confusion Matrix
-        _, preds = output.topk(1, 1, True, True)
-        for t, p in zip(targets, preds):
-            confusion_mat[int(t.item())][p[0].item()] += 1
-            total_confusion_mat[int(t.item())][p[0].item()] += 1
-
-        num_progress += len(inputs)
-        if num_progress >= next_print:
-            if logger is not None:
-                logger(history_key='batch', epoch=epoch, batch=num_progress, confusion_mat=confusion_mat, time=time.strftime('%Y%m%d%H%M%S'))
-            confusion_mat = [[0 for _ in range(3)] for _ in range(3)]
-            next_print += args.print_freq
-
-        del output, loss, acc
-
-    if logger is not None:
-        logger(history_key='total', epoch=epoch, confusion_mat=total_confusion_mat)
 
 
 def val(epoch, model, criterion, val_loader, logger=None):
@@ -66,19 +25,59 @@ def val(epoch, model, criterion, val_loader, logger=None):
 
             output = model(inputs)
             loss = criterion(output, targets)
-            acc = float(accuracy(output, targets)[0])
+            preds = torch.argmax(output, dim=1)
+            acc = torch.sum(preds == targets).item() / len(inputs) * 100.
 
             logger.add_history('total', {'loss': loss.item(), 'accuracy': acc})
 
             # Confusion Matrix
-            _, preds = output.topk(1, 1, True, True)
             for t, p in zip(targets, preds):
-                confusion_mat[int(t.item())][p[0].item()] += 1
+                confusion_mat[int(t.item())][p.item()] += 1
 
             del output, loss, acc
 
         if logger is not None:
             logger('*Validation {}'.format(epoch), history_key='total', confusion_mat=confusion_mat, time=time.strftime('%Y%m%d%H%M%S'))
+
+
+def train(epoch, model, criterion, optimizer, train_loader, logger=None):
+    model.train()
+
+    total_confusion_mat, confusion_mat = [[0 for _ in range(3)] for _ in range(3)], [[0 for _ in range(3)] for _ in range(3)]
+    num_progress, next_print = 0, args.print_freq
+    for i, (_, inputs, targets) in enumerate(train_loader):
+        if torch.cuda.is_available():
+            inputs = inputs.cuda()
+            targets = targets.cuda()
+
+        optimizer.zero_grad()
+        output = model(inputs)
+        loss = criterion(output, targets)
+        loss.backward()
+        optimizer.step()
+
+        preds = torch.argmax(output, dim=1)
+        acc = torch.sum(preds == targets).item() / len(inputs) * 100.
+
+        logger.add_history('total', {'loss': loss.item(), 'accuracy': acc})
+        logger.add_history('batch', {'loss': loss.item(), 'accuracy': acc})
+
+        # Confusion Matrix
+        for t, p in zip(targets, preds):
+            confusion_mat[int(t.item())][p.item()] += 1
+            total_confusion_mat[int(t.item())][p.item()] += 1
+
+        num_progress += len(inputs)
+        if num_progress >= next_print:
+            if logger is not None:
+                logger(history_key='batch', epoch=epoch, batch=num_progress, confusion_mat=confusion_mat, lr=round(optimizer.param_groups[0]['lr'], 12), time=time.strftime('%Y%m%d%H%M%S'))
+            confusion_mat = [[0 for _ in range(3)] for _ in range(3)]
+            next_print += args.print_freq
+
+        del output, loss, acc
+
+    if logger is not None:
+        logger(history_key='total', epoch=epoch, confusion_mat=total_confusion_mat)
 
 
 def run(args):
@@ -98,11 +97,11 @@ def run(args):
 
     # Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
+    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr * 0.001, max_lr=args.lr, step_size_up=5, step_size_down=25, mode='triangular2', cycle_momentum=False)
 
     # CUDA
     if torch.cuda.is_available():
         model = model.cuda()
-        criterion = criterion.cuda()
 
     # Dataset
     train_set, val_set, _ = prepare_gastric_EBV_data_json(args.data)
@@ -113,7 +112,7 @@ def run(args):
 
     # Logger
     logger = Logger(os.path.join(args.result, 'log.txt'), epochs=args.epochs, dataset_size=len(train_loader.dataset), float_round=5)
-    logger.set_sort(['loss', 'accuracy', 'confusion_mat', 'time'])
+    logger.set_sort(['loss', 'accuracy', 'confusion_mat', 'lr', 'time'])
     logger(str(args))
 
     save_dir = os.path.join(args.result, 'checkpoints')
@@ -126,6 +125,7 @@ def run(args):
         if epoch % args.val_freq == 0:
             val(epoch, model, criterion, val_loader, logger=logger)
             torch.save(model.state_dict(), os.path.join(save_dir, '{}.pth'.format(epoch)))
+        scheduler.step()
 
 
 if __name__ == '__main__':
@@ -133,16 +133,16 @@ if __name__ == '__main__':
     # Model Arguments
     parser.add_argument('--model', default='efficientnet_b0')
     parser.add_argument('--num_classes', default=3, type=int, help='number of classes')
-    parser.add_argument('--pretrained', default=False, action='store_true', help='Load pretrained model.')
+    parser.add_argument('--pretrained', default=True, action='store_true', help='Load pretrained model.')
     # Data Arguments
     parser.add_argument('--data', default='/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024', help='path to dataset')
     parser.add_argument('--workers', default=8, type=int, help='number of data loading workers')
     parser.add_argument('--input_size', default=512, type=int, help='image input size')
     # Training Arguments
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number')
-    parser.add_argument('--epochs', default=100, type=int, help='number of total epochs to run')
+    parser.add_argument('--epochs', default=300, type=int, help='number of total epochs to run')
     parser.add_argument('--batch_size', default=20, type=int, help='mini-batch size')
-    parser.add_argument('--lr', default=0.00001, type=float, help='initial learning rate', dest='lr')
+    parser.add_argument('--lr', default=0.000001, type=float, help='initial learning rate', dest='lr')
     parser.add_argument('--seed', default=103, type=int, help='seed for initializing training.')
     # Validation and Debugging Arguments
     parser.add_argument('--val_freq', default=1, type=int, help='validation freq')

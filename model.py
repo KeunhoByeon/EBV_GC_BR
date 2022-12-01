@@ -21,10 +21,8 @@ class Classifier(nn.Module):
             raise TypeError
 
         self.fc = nn.Linear(1000, num_classes)
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         output = self.base_model(x)
         output = self.fc(output)
-        output = self.sigmoid(output)
         return output
