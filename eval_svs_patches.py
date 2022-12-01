@@ -50,8 +50,9 @@ def prepare_eval_dataset(patch_dir, svs_dir, mask_dir, anno_path, label_if_not_e
     return data
 
 
-def count_data(data):
+def check_data(data):
     cnt, failed, cnt_dict = 0, [0, 0, 0, 0], {}
+    indices_to_del = []
     for i, (file_index, data_dict) in enumerate(data.items()):
         patches = data_dict['patches']
         svs_path = data_dict['svs_path']
@@ -59,21 +60,29 @@ def count_data(data):
         label = data_dict['label']
         if len(patches) == 0:
             failed[0] += 1
+            indices_to_del.append(file_index)
             continue
         elif svs_path is None:
             failed[1] += 1
+            indices_to_del.append(file_index)
             continue
         elif mask_path is None:
             failed[2] += 1
+            indices_to_del.append(file_index)
             continue
         elif label is None:
             failed[3] += 1
+            indices_to_del.append(file_index)
             continue
         if label not in cnt_dict.keys():
             cnt_dict[label] = 0
         cnt_dict[label] += 1
         cnt += 1
-    print("Total Cases: {} ({}), Failed: {}".format(np.sum(list(cnt_dict.values())), cnt_dict, failed))
+    for file_index in indices_to_del:
+        del data[file_index]
+    print("Total Cases: {} ({}), Failed: {}".format(len(data), cnt_dict, failed))
+
+    return data
 
 
 def evaluate(model, eval_loader, desc=''):
@@ -106,7 +115,7 @@ def run(args):
         model = model.cuda()
 
     data = prepare_eval_dataset(args.patch_dir, args.svs_dir, args.mask_dir, args.anno_path, label_if_not_exist=args.label_if_not_exist)
-    count_data(data)
+    data = check_data(data)
 
     with open(os.path.join(args.result, 'results.csv'), 'w') as wf:
         wf.write('file,x,y,pred,target\n')
@@ -194,8 +203,8 @@ if __name__ == '__main__':
     parser.add_argument('--model', default='efficientnet_b0')
     parser.add_argument('--num_classes', default=3, type=int, help='number of classes')
     parser.add_argument('--checkpoint', default=None, type=str, help='path to checkpoint')
-    parser.add_argument('--checkpoint_name', default='', type=str)
-    parser.add_argument('--checkpoint_epoch', default=0, type=int)
+    parser.add_argument('--checkpoint_name', default='20221129163053_new_base_model', type=str)
+    parser.add_argument('--checkpoint_epoch', default=83, type=int)
     # Data Paths
     parser.add_argument('--patch_dir', default='/media/kwaklab_103/sdb/data/patch_data/TCGA_Stomach_452', help='path to dataset')
     parser.add_argument('--svs_dir', default='/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452', help='path to svs dataset')
