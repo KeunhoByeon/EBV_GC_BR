@@ -48,8 +48,8 @@ if __name__ == '__main__':
     best_epoch, now_epoch, best_acc, train_acc_list, val_acc_list, epochs = read_log(txt_path)
     print(len(train_acc_list), len(val_acc_list))
 
-    plt.plot(epochs[0:], train_acc_list[1:])
-    plt.plot(epochs[1:], val_acc_list[1:])
+    plt.plot(epochs[:], train_acc_list[:])
+    plt.plot(epochs[:], val_acc_list[:])
     plt.grid(True, 'major', color='k')
     plt.minorticks_on()
     plt.grid(True, 'minor', 'y')
