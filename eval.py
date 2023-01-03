@@ -79,8 +79,8 @@ if __name__ == '__main__':
     parser.add_argument('--model', default='efficientnet_b0')
     parser.add_argument('--num_classes', default=3, type=int, help='number of classes')
     parser.add_argument('--checkpoint', default=None, type=str, help='path to checkpoint')
-    parser.add_argument('--checkpoint_name', default='', type=str)
-    parser.add_argument('--checkpoint_epoch', default=0, type=int)
+    parser.add_argument('--checkpoint_name', default='20221201192712_base_model', type=str)
+    parser.add_argument('--checkpoint_epoch', default=70, type=int)
     # Data Arguments
     parser.add_argument('--data', default='/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024', help='path to dataset')
     parser.add_argument('--input_size', default=512, type=int, help='image input size')

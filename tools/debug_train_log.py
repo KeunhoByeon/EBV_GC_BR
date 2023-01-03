@@ -39,7 +39,7 @@ def read_log(txt_path):
 
 if __name__ == '__main__':
     base_dir = '../results/'
-    checkpoint_name = ''
+    checkpoint_name = '20221129163053_color_noise'
     txt_path = os.path.join(base_dir, checkpoint_name, 'log.txt')
 
     if not os.path.isfile(txt_path):
@@ -48,7 +48,7 @@ if __name__ == '__main__':
     best_epoch, now_epoch, best_acc, train_acc_list, val_acc_list, epochs = read_log(txt_path)
     print(len(train_acc_list), len(val_acc_list))
 
-    plt.plot(epochs[1:], train_acc_list[1:])
+    plt.plot(epochs[0:], train_acc_list[1:])
     plt.plot(epochs[1:], val_acc_list[1:])
     plt.grid(True, 'major', color='k')
     plt.minorticks_on()

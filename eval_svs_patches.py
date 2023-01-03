@@ -189,7 +189,7 @@ def run(args):
         with open(os.path.join(args.result, 'results.csv'), 'a') as wf:
             wf.writelines(results_data)
 
-        result_mask = (output_mask + 1) * tissue_mask
+        result_mask = (output_mask * 2 + 1) * tissue_mask
         output = (result_mask + 1) / 3 * thumbnail
         output = np.clip(output, 0, 255).astype(np.uint8)
 
@@ -203,24 +203,23 @@ if __name__ == '__main__':
     parser.add_argument('--model', default='efficientnet_b0')
     parser.add_argument('--num_classes', default=3, type=int, help='number of classes')
     parser.add_argument('--checkpoint', default=None, type=str, help='path to checkpoint')
-    parser.add_argument('--checkpoint_name', default='20221129163053_new_base_model', type=str)
+    parser.add_argument('--checkpoint_name', default='20221129163053_color_noise', type=str)
     parser.add_argument('--checkpoint_epoch', default=83, type=int)
     # Data Paths
-    parser.add_argument('--patch_dir', default='/media/kwaklab_103/sdb/data/patch_data/TCGA_Stomach_452', help='path to dataset')
+    parser.add_argument('--patch_dir', default='/media/kwaklab_103/sdc/data/patch_data/TCGA_Stomach_452_normalized_1', help='path to dataset')
     parser.add_argument('--svs_dir', default='/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452', help='path to svs dataset')
     parser.add_argument('--mask_dir', default='/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452_tissue_mask', help='path to mask dataset')
-    # parser.add_argument('--stain_target', default='/media/kwaklab_103/sda/data/patch_data/KBSMC/gastric/gastric_EBV_1024/Gastric_WSI/gastric_wsi_1024_08/S 2012017007/patch_1343_class_2.jpg')
     parser.add_argument('--stain_target', default=None)
     # Data Arguments
     parser.add_argument('--anno_path', default='/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452/STAD_molecular_subtype TCGA data.xlsx', help='path to svs dataset')
     parser.add_argument('--input_size', default=512, type=int, help='image input size')
-    parser.add_argument('--workers', default=16, type=int, help='number of data loading workers')
+    parser.add_argument('--workers', default=4, type=int, help='number of data loading workers')
     parser.add_argument('--batch_size', default=128, type=int, help='mini-batch size')
     # Debugging Arguments
     parser.add_argument('--patch_size', default=1024, type=int, help='num pixels of patch')
     parser.add_argument('--label_if_not_exist', default=None)
     parser.add_argument('--result', default=None, help='path to results')
-    parser.add_argument('--result_tag', default='eval_TCGA')
+    parser.add_argument('--result_tag', default='eval_TCGA_Stomach_452_normalized_1')
     args = parser.parse_args()
 
     # Paths setting

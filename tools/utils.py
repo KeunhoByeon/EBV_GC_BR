@@ -10,6 +10,8 @@ import torch
 def os_walk(walk_dir, ext=None):
     if ext is None:
         ext_list = None
+    elif ext == 'image' or ext == 'images' or ext == 'img' or ext == 'imgs':
+        ext_list = ('.png', '.jpg', '.jpeg')
     elif isinstance(ext, list) or isinstance(ext, tuple):
         ext_list = ext
     elif isinstance(ext, str):

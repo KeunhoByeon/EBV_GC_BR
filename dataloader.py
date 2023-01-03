@@ -45,18 +45,18 @@ class EBVGCDataset(Dataset):
     def __getitem__(self, index):
         img_path, gt = self.samples[index]
 
-        # if self.is_train and gt == 0 and np.random.random() < 0.001:
-        #     img_path = './data/empty.png'
-        #     img = np.random.normal(255, np.random.randint(0, 127), (self.input_size, self.input_size, 3)) / 2
-        #     img = img.astype(float)
-        #     img[:, :, 0] *= np.random.random()
-        #     img[:, :, 1] *= np.random.random()
-        #     img[:, :, 2] *= np.random.random()
-        #     img = img.astype(np.uint8)
-        # else:
+        if self.is_train and gt == 0 and np.random.random() < 0.001:
+            img_path = './data/empty.png'
+            img = np.random.normal(255, np.random.randint(0, 127), (self.input_size, self.input_size, 3)) / 2
+            img = img.astype(float)
+            img[:, :, 0] *= np.random.random()
+            img[:, :, 1] *= np.random.random()
+            img[:, :, 2] *= np.random.random()
+            img = img.astype(np.uint8)
+        else:
+            img = cv2.imread(img_path)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
-        img = cv2.imread(img_path)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if self.input_size is not None:
             img = resize_and_pad_image(img, target_size=(self.input_size, self.input_size), keep_ratio=True, padding=True)
 

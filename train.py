@@ -97,7 +97,7 @@ def run(args):
 
     # Optimizer
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr * 0.001, max_lr=args.lr, step_size_up=5, step_size_down=25, mode='triangular2', cycle_momentum=False)
+    scheduler = torch.optim.lr_scheduler.CyclicLR(optimizer, base_lr=args.lr * 0.01, max_lr=args.lr, step_size_up=5, step_size_down=25, mode='triangular2', cycle_momentum=False)
 
     # CUDA
     if torch.cuda.is_available():
