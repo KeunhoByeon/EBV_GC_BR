@@ -213,7 +213,7 @@ if __name__ == '__main__':
     # Data Arguments
     parser.add_argument('--anno_path', default='/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452/STAD_molecular_subtype TCGA data.xlsx', help='path to svs dataset')
     parser.add_argument('--input_size', default=512, type=int, help='image input size')
-    parser.add_argument('--workers', default=4, type=int, help='number of data loading workers')
+    parser.add_argument('--workers', default=8, type=int, help='number of data loading workers')
     parser.add_argument('--batch_size', default=128, type=int, help='mini-batch size')
     # Debugging Arguments
     parser.add_argument('--patch_size', default=1024, type=int, help='num pixels of patch')
