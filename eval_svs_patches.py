@@ -219,7 +219,7 @@ if __name__ == '__main__':
     parser.add_argument('--patch_size', default=1024, type=int, help='num pixels of patch')
     parser.add_argument('--label_if_not_exist', default=None)
     parser.add_argument('--result', default=None, help='path to results')
-    parser.add_argument('--result_tag', default='eval_TCGA_Stomach_452_normalized_1')
+    parser.add_argument('--result_tag', default='eval_TCGA_normalized_1')
     args = parser.parse_args()
 
     # Paths setting
