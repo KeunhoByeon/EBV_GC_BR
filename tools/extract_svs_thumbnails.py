@@ -5,7 +5,6 @@ import numpy as np
 import openslide
 from tqdm import tqdm
 
-from tools.utils import load_annotation
 
 svs_dir = '/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452/'
 xlsx_path = '/media/kwaklab_103/sda/data/raw_data/TCGA_Stomach_452/STAD_molecular_subtype TCGA data.xlsx'

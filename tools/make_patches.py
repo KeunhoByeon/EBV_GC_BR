@@ -44,12 +44,8 @@ def make_patches(file_full_index, data_dict, read_size=1024, step=1.0):
         return
 
     if mask_path is not None:
-        mask_ratio = min(1024 / h_pixels, 1024 / w_pixels)
-        mask_shape = (int(h_pixels * mask_ratio), int(w_pixels * mask_ratio))
         tissue_mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-        tissue_mask = resize_and_pad_image(tissue_mask, target_size=mask_shape, padding=False)
-        tissue_mask = tissue_mask.astype(float)
-        tissue_mask /= 255.
+        tissue_mask = tissue_mask.astype(float) / 255.
 
     os.makedirs(save_dir, exist_ok=True)
     for w_i in range(0, w_pixels, int(read_size * step)):
@@ -58,20 +54,14 @@ def make_patches(file_full_index, data_dict, read_size=1024, step=1.0):
             if EXCEPT_EXIST and os.path.isfile(save_path):
                 continue
 
-            # Mask
             if MASK_THRESH is not None and MASK_THRESH > 0 and mask_path is not None:
-                coord_x_1 = w_i * mask_ratio
-                coord_y_1 = h_i * mask_ratio
-                coord_x_2 = coord_x_1 + read_size * mask_ratio
-                coord_y_2 = coord_y_1 + read_size * mask_ratio
-                if EXCEPT_BLACK_EDGE:
-                    if math.floor(coord_x_1) < 0 or math.floor(coord_y_1) < 0:
-                        continue
-                    elif math.ceil(coord_x_2) >= tissue_mask.shape[1] or math.ceil(coord_y_2) >= tissue_mask.shape[0]:
-                        continue
-                coord_x_1, coord_y_1 = max(math.floor(coord_x_1), 0), max(math.floor(coord_y_1), 0)
-                coord_x_2, coord_y_2 = min(math.ceil(coord_x_2), tissue_mask.shape[1]), min(math.ceil(coord_y_2), tissue_mask.shape[0])
-                if np.mean(tissue_mask[coord_y_1:coord_y_2, coord_x_1:coord_x_2]) < MASK_THRESH:
+                mask_pos_x_1 = int(w_i / w_pixels * tissue_mask.shape[1])
+                mask_pos_x_2 = int((w_i + read_size) / w_pixels * tissue_mask.shape[1])
+                mask_pos_y_1 = int(h_i / h_pixels * tissue_mask.shape[0])
+                mask_pos_y_2 = int((h_i + read_size) / h_pixels * tissue_mask.shape[0])
+
+                mask_mean_value = np.mean(tissue_mask[mask_pos_y_1:mask_pos_y_2, mask_pos_x_1:mask_pos_x_2])
+                if mask_mean_value < MASK_THRESH:
                     continue
 
             slide_img = slide.read_region((w_i, h_i), 0, (read_size, read_size))

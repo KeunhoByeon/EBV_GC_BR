@@ -69,7 +69,11 @@ def resize_and_pad_image(img, target_size=(640, 640), keep_ratio=False, padding=
         delta_h = target_size[0] - new_size[0]
         top, bottom = delta_h // 2, delta_h - (delta_h // 2)
         left, right = delta_w // 2, delta_w - (delta_w // 2)
-        img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[0, 0, 0])
+        if (isinstance(padding, list) or isinstance(padding, tuple)) and len(padding) == 3:
+            value = padding
+        else:
+            value = [0, 0, 0]
+        img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=value)
 
     return img
 
